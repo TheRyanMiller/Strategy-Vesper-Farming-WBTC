@@ -233,6 +233,7 @@ contract Strategy is BaseStrategy {
                 .mul(1e24)
                 .div(morePrecisePricePerShare()));
         if(vaultBalance > 0){
+            sharesToWithdraw = Math.min(sharesToWithdraw, vaultBalance);
             IVesperPool(vWBTC).withdraw(sharesToWithdraw);
         }
         uint256 withdrawnAmount = want.balanceOf(address(this)).sub(wantBalanceBefore);
@@ -274,10 +275,10 @@ contract Strategy is BaseStrategy {
         if(useVvsp){
             if(IPoolRewards(poolRewards).claimable(address(this)) > 0) {
                 IPoolRewards(poolRewards).claimReward(address(this));
-                uint256 rewards = IERC20(vsp).balanceOf(address(this));
-                if(rewards > 0){
-                    IVesperPool(vVSP).deposit(rewards);
-                }
+            }
+            uint256 vspBalance = IERC20(vsp).balanceOf(address(this));
+            if(vspBalance > 0){
+                IVesperPool(vVSP).deposit(vspBalance);
             }
         }
     }

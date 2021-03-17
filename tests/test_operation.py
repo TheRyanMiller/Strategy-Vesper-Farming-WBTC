@@ -4,6 +4,7 @@ from helpers import stratData,vaultData
 
 
 def test_operation(accounts, token, vault, strategy, strategist, amount, user, vWBTC, chain, gov, vVSP, vsp):
+    chain.snapshot()
     one_day = 86400
     # Deposit to the vault
     token.approve(vault.address, amount, {"from": user})
@@ -76,6 +77,7 @@ def test_operation(accounts, token, vault, strategy, strategist, amount, user, v
     assert token.balanceOf(user) > amount * 0.994 * .78 # Ensure profit was made after withdraw fee
     assert vault.balanceOf(vault.rewards()) > 0 # Check mgmt fee
     assert vault.balanceOf(strategy) > 0 # Check perf fee
+    chain.revert()
 
 def test_switch_dex(accounts, token, vault, strategy, strategist, amount, user, vWBTC, chain, gov, vVSP, vsp):
     originalDex = strategy.activeDex()
@@ -96,23 +98,34 @@ def test_emergency_exit(accounts, token, vault, strategy, strategist, amount, us
     assert strategy.estimatedTotalAssets() < amount
 
 
-def test_profitable_harvest(accounts, token, vault, strategy, strategist, amount, user, chain, vVSP, vWBTC):
+def test_profitable_harvest(accounts, token, vault, strategy, strategist, amount, user, chain, vVSP, vWBTC, vsp):
     one_day = 86400
     # Deposit to the vault
     token.approve(vault.address, amount, {"from": user})
     vault.deposit(amount, {"from": user})
-    
-    # harvest funds to strat
-    strategy.harvest({"from": strategist})
-    assert strategy.estimatedTotalAssets()+1 == amount
+    assert token.balanceOf(vault.address) == amount
+    vaultData(vault, token)
+    stratData(strategy, token, vWBTC, vVSP, vsp)
 
-    # accrue profit + harvest
+    # harvest 1
+    strategy.harvest({"from": strategist})
+    chain.mine(1)
+    vaultData(vault, token)
+    stratData(strategy, token, vWBTC, vVSP, vsp)
+    assert strategy.estimatedTotalAssets()+1 >= amount # Won't match because we must account for withdraw fees
+
+    # Harvest 2: Allow rewards to be earned
     chain.sleep(one_day)
     chain.mine(1)
     strategy.harvest({"from": strategist})
-    
-    assert strategy.estimatedTotalAssets()+1 > amount
+    vaultData(vault, token)
+    stratData(strategy, token, vWBTC, vVSP, vsp)
 
+    print("\nEst APR: ", "{:.2%}".format(
+            ((vault.totalAssets() - amount) * 365) / (amount)
+        )
+    )
+    assert strategy.estimatedTotalAssets()+1 > amount
 
 def test_change_debt(gov, token, vault, strategy, strategist, amount, user, vWBTC, vVSP):
     # Deposit to the vault and harvest
@@ -125,7 +138,7 @@ def test_change_debt(gov, token, vault, strategy, strategist, amount, user, vWBT
 
     vault.updateStrategyDebtRatio(strategy.address, 10_000, {"from": gov})
     strategy.harvest({"from": strategist})
-    assert strategy.estimatedTotalAssets()+1 == amount
+    assert strategy.estimatedTotalAssets()+1 >= amount
 
     # In order to pass this tests, you will need to implement prepareReturn.
     # TODO: uncomment the following lines.
