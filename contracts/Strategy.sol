@@ -190,7 +190,6 @@ contract Strategy is BaseStrategy {
             if(vspBalance > 0){
                 _sell(vspBalance);
                 uint256 newBalance = want.balanceOf(address(this));
-                uint256 wantAfter = newBalance.sub(wantBalance); // Amount we just bought
                 wantBalance = newBalance;
                 // Check if we have enough
                 if(wantBalance > toFree){
