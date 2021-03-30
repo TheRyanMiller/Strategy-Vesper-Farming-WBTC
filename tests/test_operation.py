@@ -3,25 +3,24 @@ from brownie import Contract
 from helpers import stratData,vaultData
 
 
-def test_operation(accounts, token, vault, strategy, strategist, amount, user, vWBTC, chain, gov, vVSP, vsp):
+def test_operation(accounts, token, vault, strategy, strategist, amount, user, user2, vWBTC, chain, gov, vsp):
     chain.snapshot()
     one_day = 86400
     # Deposit to the vault
     token.approve(vault.address, amount, {"from": user})
+    token.approve(vault.address, amount, {"from": user2})
     vault.deposit(amount, {"from": user})
-    assert token.balanceOf(vault.address) == amount
+    vault.deposit(amount, {"from": user2})
+    assert token.balanceOf(vault.address) >= amount
     vaultData(vault, token)
-    stratData(strategy, token, vWBTC, vVSP, vsp)
+    stratData(strategy, token, vWBTC, vsp)
 
     # harvest 1
     strategy.harvest({"from": strategist})
     chain.mine(1)
     vaultData(vault, token)
-    stratData(strategy, token, vWBTC, vVSP, vsp)
-    assert strategy.estimatedTotalAssets()+1 >= amount # Won't match because we must account for withdraw fees
-
-    # tend()
-    # strategy.tend({"from": strategist})
+    stratData(strategy, token, vWBTC, vsp)
+    assert strategy.estimatedTotalAssets()+1 >= amount
     
     # Harvest 2: Allow rewards to be earned
     print("\n**Harvest 2**")
@@ -29,7 +28,7 @@ def test_operation(accounts, token, vault, strategy, strategist, amount, user, v
     chain.mine(1)
     strategy.harvest({"from": strategist})
     vaultData(vault, token)
-    stratData(strategy, token, vWBTC, vVSP, vsp)
+    stratData(strategy, token, vWBTC, vsp)
 
     print("\nEst APR: ", "{:.2%}".format(
             ((vault.totalAssets() - amount) * 365) / (amount)
@@ -40,11 +39,9 @@ def test_operation(accounts, token, vault, strategy, strategist, amount, user, v
     print("\n**Harvest 3**")
     chain.sleep(one_day)
     chain.mine(1)
-    # vVSP.rebalance({"from": strategist}) # must be called from pool... this is hard to test.
-    # strategy.toggleHarvestVvsp({"from":strategist}) # Dump VSP tokens this time
     strategy.harvest({"from": strategist})
     vaultData(vault, token)
-    stratData(strategy, token, vWBTC, vVSP, vsp)
+    stratData(strategy, token, vWBTC, vsp)
 
     # Current contract has rewards emissions ending on Mar 19, so we shouldnt project too far
     print("\nEst APR: ", "{:.2%}".format(
@@ -56,11 +53,9 @@ def test_operation(accounts, token, vault, strategy, strategist, amount, user, v
     print("\n**Harvest 4**")
     chain.sleep(one_day)
     chain.mine(1)
-    # vVSP.rebalance({"from": strategist}) # must be called from pool... this is hard to test.
-    strategy.toggleHarvestVvsp({"from":strategist}) # Dump VSP tokens this time
     strategy.harvest({"from": strategist})
     vaultData(vault, token)
-    stratData(strategy, token, vWBTC, vVSP, vsp)
+    stratData(strategy, token, vWBTC, vsp)
 
     # Current contract has rewards emissions ending on Mar 19, so we shouldnt project too far
     print("\nEst APR: ", "{:.2%}".format(
@@ -73,19 +68,19 @@ def test_operation(accounts, token, vault, strategy, strategist, amount, user, v
     chain.sleep(3600) # wait six hours for a profitable withdraw
     vault.withdraw(vault.balanceOf(user),user,61,{"from": user}) # Need more loss protect to handle 0.6% withdraw fee
     vaultData(vault, token)
-    stratData(strategy, token, vWBTC, vVSP, vsp)
+    stratData(strategy, token, vWBTC, vsp)
     assert token.balanceOf(user) > amount * 0.994 * .78 # Ensure profit was made after withdraw fee
     assert vault.balanceOf(vault.rewards()) > 0 # Check mgmt fee
     assert vault.balanceOf(strategy) > 0 # Check perf fee
     chain.revert()
 
-def test_switch_dex(accounts, token, vault, strategy, strategist, amount, user, vWBTC, chain, gov, vVSP, vsp):
+def test_switch_dex(accounts, token, vault, strategy, strategist, amount, user, vWBTC, chain, gov, vsp):
     originalDex = strategy.activeDex()
     strategy.toggleActiveDex({"from": gov})
     newDex = strategy.activeDex()
     assert originalDex != newDex
 
-def test_emergency_exit(accounts, token, vault, strategy, strategist, amount, user, vVSP):
+def test_emergency_exit(accounts, token, vault, strategy, strategist, amount, user):
     # Deposit to the vault
     token.approve(vault.address, amount, {"from": user})
     vault.deposit(amount, {"from": user})
@@ -98,20 +93,20 @@ def test_emergency_exit(accounts, token, vault, strategy, strategist, amount, us
     assert strategy.estimatedTotalAssets() < amount
 
 
-def test_profitable_harvest(accounts, token, vault, strategy, strategist, amount, user, chain, vVSP, vWBTC, vsp):
+def test_profitable_harvest(accounts, token, vault, strategy, strategist, amount, user, chain, vWBTC, vsp):
     one_day = 86400
     # Deposit to the vault
     token.approve(vault.address, amount, {"from": user})
     vault.deposit(amount, {"from": user})
     assert token.balanceOf(vault.address) == amount
     vaultData(vault, token)
-    stratData(strategy, token, vWBTC, vVSP, vsp)
+    stratData(strategy, token, vWBTC, vsp)
 
     # harvest 1
     strategy.harvest({"from": strategist})
     chain.mine(1)
     vaultData(vault, token)
-    stratData(strategy, token, vWBTC, vVSP, vsp)
+    stratData(strategy, token, vWBTC, vsp)
     assert strategy.estimatedTotalAssets()+1 >= amount # Won't match because we must account for withdraw fees
 
     # Harvest 2: Allow rewards to be earned
@@ -119,7 +114,7 @@ def test_profitable_harvest(accounts, token, vault, strategy, strategist, amount
     chain.mine(1)
     strategy.harvest({"from": strategist})
     vaultData(vault, token)
-    stratData(strategy, token, vWBTC, vVSP, vsp)
+    stratData(strategy, token, vWBTC, vsp)
 
     print("\nEst APR: ", "{:.2%}".format(
             ((vault.totalAssets() - amount) * 365) / (amount)
@@ -127,7 +122,7 @@ def test_profitable_harvest(accounts, token, vault, strategy, strategist, amount
     )
     assert strategy.estimatedTotalAssets()+1 > amount
 
-def test_change_debt(gov, token, vault, strategy, strategist, amount, user, vWBTC, vVSP):
+def test_change_debt(gov, token, vault, strategy, strategist, amount, user, vWBTC):
     # Deposit to the vault and harvest
     token.approve(vault.address, amount, {"from": user})
     vault.deposit(amount, {"from": user})

@@ -8,6 +8,10 @@ def user(accounts):
     yield accounts[6]
 
 @pytest.fixture
+def user2(accounts):
+    yield accounts[7]
+
+@pytest.fixture
 def gov(accounts):
     yield accounts[0]
 
@@ -44,12 +48,13 @@ def token():
 
 
 @pytest.fixture
-def amount(accounts, token, user):
+def amount(accounts, token, user, user2):
     amount = 10 * 10 ** token.decimals()
     # In order to get some funds for the token you are about to use,
     # it impersonate an exchange address to use it's funds.
     reserve = accounts.at("0x3f5CE5FBFe3E9af3971dD833D26bA9b5C936f0bE", force=True)
     token.transfer(user, amount, {"from": reserve})
+    token.transfer(user2, amount, {"from": reserve})
     yield amount
 
 
@@ -70,7 +75,7 @@ def vsp(accounts, user):
     amount = 1e20
     token_address = "0x1b40183EFB4Dd766f11bDa7A7c3AD8982e998421"
     vspContract = Contract(token_address)
-    reserve = accounts.at("0x47c2807b21dcd776E49Cf7760cb5aCeAD97668CB", force=True)
+    reserve = accounts.at("0x9520b477Aa81180E6DdC006Fc09Fb6d3eb4e807A", force=True)
     vspContract.transfer(user, amount, {"from": reserve})
     yield vspContract
 
@@ -95,7 +100,3 @@ def strategy(strategist, keeper, vault, Strategy, gov):
 @pytest.fixture
 def vWBTC():
     yield Contract("0x4B2e76EbBc9f2923d83F5FBDe695D8733db1a17B")
-
-@pytest.fixture
-def vVSP():
-    yield Contract("0xbA4cFE5741b357FA371b506e5db0774aBFeCf8Fc")

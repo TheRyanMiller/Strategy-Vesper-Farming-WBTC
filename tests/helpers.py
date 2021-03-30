@@ -1,17 +1,15 @@
 
 
 
-def stratData(strategy, token, wBTC, vVSP, vsp):
+def stratData(strategy, token, wBTC, vsp):
     decimals = token.decimals()
     print('\n----STRATEGY----')
     stratBal = token.balanceOf(strategy)
     vesperSharesU = wBTC.balanceOf(strategy)
-    vesperSharesV = vVSP.balanceOf(strategy)
     vspBal = vsp.balanceOf(strategy)
     print("wBTC bal:", stratBal/(10 ** decimals))
     print("vsp bal:", vspBal/1e18)
     print("vesper shares wBTC:", vesperSharesU / 1e18)
-    print("vesper shares vVSP:", vesperSharesV / 1e18)
     print('Estimated total assets:', strategy.estimatedTotalAssets()/  (10 ** decimals))  
 
 def vaultData(vault, token):
